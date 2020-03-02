@@ -27,28 +27,29 @@ class ViewController: UIViewController {
       
       device = MTLCreateSystemDefaultDevice()
       
-      metalLayer = CAMetalLayer()          // 1
-      metalLayer.device = device           // 2
-      metalLayer.pixelFormat = .bgra8Unorm // 3
-      metalLayer.framebufferOnly = true    // 4
-      metalLayer.frame = view.layer.frame  // 5
-      view.layer.addSublayer(metalLayer)   // 6
+      metalLayer = CAMetalLayer()          // Create a new CAMetalLayer.
+      metalLayer.device = device           // You must specify the MTLDevice the layer should use. You simply set this to the device you obtained earlier.
+      metalLayer.pixelFormat = .bgra8Unorm // Set the pixel format to bgra8Unorm, which is a fancy way of saying “8 bytes for Blue, Green, Red and Alpha, in that order — with normalized values between 0 and 1.” This is one of only two possible formats to use for a CAMetalLayer, so normally you’d just leave this as-is.
+      metalLayer.framebufferOnly = true    // Apple encourages you to set framebufferOnly to true for performance reasons unless you need to sample from the textures generated for this layer, or if you need to enable compute kernels on the layer drawable texture. Most of the time, you don’t need to do this.
+      metalLayer.frame = view.layer.frame  // You set the frame of the layer to match the frame of the view.
+      view.layer.addSublayer(metalLayer)   // Finally, you add the layer as a sublayer of the view’s main layer.
       
-      let dataSize = vertexData.count * MemoryLayout.size(ofValue: vertexData[0]) // 1
-      vertexBuffer = device.makeBuffer(bytes: vertexData, length: dataSize, options: []) // 2
+      let dataSize = vertexData.count * MemoryLayout.size(ofValue: vertexData[0]) // You need to get the size of the vertex data in bytes. You do this by multiplying the size of the first element by the count of elements in the array.
+      vertexBuffer = device.makeBuffer(bytes: vertexData, length: dataSize, options: []) // You call makeBuffer(bytes:length:options:) on the MTLDevice to create a new buffer on the GPU, passing in the data from the CPU. You pass an empty array for default configuration.
+
       
-      // 1
+      // You can access any of the precompiled shaders included in your project through the MTLLibrary object you get by calling device.makeDefaultLibrary()!. Then, you can look up each shader by name.
       let defaultLibrary = device.makeDefaultLibrary()!
       let fragmentProgram = defaultLibrary.makeFunction(name: "basic_fragment")
       let vertexProgram = defaultLibrary.makeFunction(name: "basic_vertex")
       
-      // 2
+      // You set up your render pipeline configuration here. It contains the shaders that you want to use, as well as the pixel format for the color attachment — i.e., the output buffer that you’re rendering to, which is the CAMetalLayer itself.
       let pipelineStateDescriptor = MTLRenderPipelineDescriptor()
       pipelineStateDescriptor.vertexFunction = vertexProgram
       pipelineStateDescriptor.fragmentFunction = fragmentProgram
       pipelineStateDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
       
-      // 3
+      // Finally, you compile the pipeline configuration into a pipeline state that is efficient to use here on out.
       pipelineState = try! device.makeRenderPipelineState(descriptor: pipelineStateDescriptor)
       
       commandQueue = device.makeCommandQueue()
